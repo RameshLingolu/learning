@@ -10,6 +10,12 @@ spark=SparkSession.builder.appName("CustomerOrderPypeline").getOrCreate()
 logging.basicConfig(level=logging.INFO)
 logger=logging.getLogger("CustomerOrderPypeline")
 
+#user defined exception
+class InvalidInputError(Exception):
+  def __init__(self,message="Zero rows in final dataframe"):
+      self.message=message
+      super().__inti__(self.message)
+
 #Read from CSV
 
 try:
@@ -18,12 +24,18 @@ try:
 
     #udf to define order values
     def order_category(amount):
-        if amount>200:
-           return "High Value"
-        elif amount>100:
-           return "Medium Value"
-        else:
-           return "Low Value"
+        try:
+            if amount<0:
+                raise InvalidInputError("Invalid Amount for order")
+            elif amount>200:
+              return "High Value"
+            elif amount>100:
+              return "Medium Value"
+            else:
+              return "Low Value"
+        except InvalidInputError as e:
+            logger.warning(f"Order amount is not valid {str(e)}")
+            return "Invalid"
 
     #registering udf
     order_category_udf=udf(order_category,StringType())
@@ -40,6 +52,27 @@ try:
 
     transformed_df.show()
     logger.info("Pipeline Completed Successfully")
+
+    # Database Connection SF
+    sf_options = {
+        "sfURL": "sample.snowflakecomputing.com",
+        "sfUser": "test123",
+        "sfPassword": "*******",
+        "sfDatabase": "DEMO_DB",
+        "sfSchema": "NOT_USED",
+        "sfWarehouse": "COMPUTE_WH",
+        "sfRole": "SYSADMIN"
+    }
+
+     # writing final df to Snowflake table
+    transformed_df.write \
+        .format("snowflake") \
+        .options(**sf_options) \
+        .option("dbtable", "customer_orders_inr") \
+        .mode("overwrite") \
+        .save()
+    logger.info("Data written to Snowflake.")
+
 
     #Exception Block
 except Exception as e:
