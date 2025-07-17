@@ -12,7 +12,7 @@ logger=logging.getLogger("CustomerOrderPypeline")
 
 #user defined exception
 class InvalidInputError(Exception):
-  def __init__(self,message="Zero rows in final dataframe"):
+  def __init__(self,message="Invalid Amount"):
       self.message=message
       super().__inti__(self.message)
 
@@ -26,7 +26,7 @@ try:
     def order_category(amount):
         try:
             if amount<0:
-                raise InvalidInputError("Invalid Amount for order")
+                raise InvalidInputError(f"Invalid order amount: {amount}")
             elif amount>200:
               return "High Value"
             elif amount>100:
